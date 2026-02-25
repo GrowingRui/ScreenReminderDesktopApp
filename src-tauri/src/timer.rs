@@ -25,7 +25,7 @@ impl TimerState {
 pub async fn start_timer_logic(state: Arc<Mutex<TimerState>>, app: AppHandle) {
     {
         let mut s = state.lock().await;
-        if s.running { return; }
+        if s.running { return; } // 如果已经在跑了，就不重复开启
         s.running = true;
     }
 
@@ -34,18 +34,16 @@ pub async fn start_timer_logic(state: Arc<Mutex<TimerState>>, app: AppHandle) {
     loop {
         {
             let mut s = state.lock().await;
+            // 关键：如果用户点击了 Pause (running 为 false) 或者时间到了，就退出循环
             if !s.running || s.seconds_remaining == 0 {
                 if s.seconds_remaining == 0 {
                     s.session_count += 1;
-                    info!("EVENT: REMINDER_TRIGGERED. Count: {}", s.session_count);
-                    // 安全发射：忽略错误防止崩溃
                     let _ = app.emit_all("reminder_alert", "Time to rest!");
                 }
-                s.running = false;
-                break;
+                s.running = false; // 确保状态同步
+                break; // 结束当前协程任务
             }
             s.seconds_remaining -= 1;
-            // 安全发射：忽略错误
             let _ = app.emit_all("tick", s.seconds_remaining);
         }
         sleep(Duration::from_secs(1)).await;

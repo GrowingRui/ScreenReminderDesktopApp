@@ -12,9 +12,10 @@ pub async fn start_timer_cmd(
     {
         let mut s = state.lock().await;
         s.seconds_remaining = seconds;
+        s.total_seconds = seconds; // 🟢 同步更新总时长，确保 UI 和逻辑一致
     }
     let state_clone = state.inner().clone();
-    // 使用 Tauri 推荐的 async_runtime
+    // 使用 Tauri 推荐的托管运行时
     async_runtime::spawn(start_timer_logic(state_clone, app));
     Ok(())
 }

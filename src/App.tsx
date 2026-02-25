@@ -3,17 +3,13 @@ import { useContext } from "react";
 import { TimerContext, TimerProvider } from "./context/TimerContext";
 import { useTauriEvents } from "./hooks/useTauriEvents";
 import { invoke } from "@tauri-apps/api/tauri";
+import { appWindow } from "@tauri-apps/api/window"; // 🟢 导入窗口 API
 
 // 内部业务组件
 function InnerApp() {
-  useTauriEvents(); // 激活监听
-
+  useTauriEvents();
   const context = useContext(TimerContext);
-
-  // 类型保护
-  if (!context) {
-    return <div className="text-white">Error: Context not found</div>;
-  }
+  if (!context) return null;
 
   const { seconds, isAlert, setIsAlert } = context;
 
@@ -23,59 +19,75 @@ function InnerApp() {
     return `${m.toString().padStart(2, '0')}:${rs.toString().padStart(2, '0')}`;
   };
 
-  const handleStart = (targetSeconds: number) => {
-    // 调用 Rust 命令，传入自定义时长
-    invoke("start_timer_cmd", { seconds: targetSeconds }).catch(console.error);
-  };
-
-  const handleStop = () => {
-    invoke("stop_timer_cmd").catch(console.error);
-  };
-
   return (
-    <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-xl text-white p-8 border border-white/10 rounded-[2rem] select-none">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-          Screen Reminder
+    // 🟢 背景改为白色 (bg-white)，文字改为深色 (text-slate-900)，边框加深
+    // 🟢 重新将拖拽区域直接写在最外层 div
+    <div
+      data-tauri-drag-region
+      className="h-screen w-screen flex flex-col items-center justify-center bg-white text-slate-900 p-8 rounded-3xl select-none relative border-2 border-slate-200 shadow-2xl"
+    >
+      {/* 功能按钮：使用 pointer-events-auto 确保在拖拽区域上方仍可点击 */}
+      <div className="absolute top-5 right-5 flex space-x-3 z-50 pointer-events-auto">
+        <button
+          onClick={() => appWindow.minimize()}
+          className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all"
+        >
+          _
+        </button>
+        <button
+          onClick={() => appWindow.hide()}
+          className="w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-all"
+        >
+          ✕
+        </button>
+      </div>
+
+      <header className="mb-6 pointer-events-none">
+        <h1 className="text-lg font-black tracking-widest text-slate-400">
+          SCREEN REMINDER
         </h1>
       </header>
 
-      <main className="flex flex-col items-center">
-        <div className="text-7xl font-mono font-black mb-12 tracking-tighter drop-shadow-2xl">
+      <main className="flex flex-col items-center w-full pointer-events-none">
+        <div className="text-8xl font-mono font-black mb-10 tracking-tighter text-slate-800 tabular-nums">
           {formatTime(seconds)}
         </div>
 
-        <div className="flex space-x-4">
+        {/* 按钮组需要恢复点击 */}
+        <div className="flex flex-col space-y-3 w-full px-4 pointer-events-auto">
+          <div className="flex space-x-3">
+            <button
+              onClick={() => invoke("start_timer_cmd", { seconds: 1200 })}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-200"
+            >
+              20 Min
+            </button>
+            <button
+              onClick={() => invoke("start_timer_cmd", { seconds: 1800 })}
+              className="flex-1 bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-slate-300"
+            >
+              30 Min
+            </button>
+          </div>
+
           <button
-            onClick={() => handleStart(1200)}
-            className="bg-cyan-600 hover:bg-cyan-500 px-6 py-2 rounded-full transition-all active:scale-95 shadow-lg shadow-cyan-500/20"
+            onClick={() => invoke("stop_timer_cmd")}
+            className="w-full bg-white hover:bg-slate-50 text-slate-600 py-3 rounded-2xl font-bold transition-all active:scale-95 border-2 border-slate-100"
           >
-            20 Min
-          </button>
-          <button
-            onClick={() => handleStart(1800)}
-            className="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-full transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-          >
-            30 Min
-          </button>
-          <button
-            onClick={handleStop}
-            className="bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded-full transition-all active:scale-95"
-          >
-            Pause
+            PAUSE / RESET
           </button>
         </div>
       </main>
 
-      {/* 弹窗提醒层 */}
+      {/* 提醒遮罩层 */}
       {isAlert && (
-        <div className="absolute inset-0 bg-blue-600 flex flex-col items-center justify-center animate-in zoom-in duration-300 z-50">
-          <h2 className="text-4xl font-black mb-8 animate-bounce">Time to Rest! 🥤</h2>
+        <div className="absolute inset-0 bg-indigo-600 flex flex-col items-center justify-center z-[100] rounded-3xl">
+          <h2 className="text-4xl font-black text-white mb-8">REST TIME!</h2>
           <button
             onClick={() => setIsAlert(false)}
-            className="bg-white text-blue-600 px-10 py-4 rounded-full font-bold text-xl shadow-2xl active:scale-95"
+            className="bg-white text-indigo-600 px-12 py-4 rounded-full font-black text-xl shadow-xl active:scale-95"
           >
-            I'm Back
+            I'M BACK
           </button>
         </div>
       )}

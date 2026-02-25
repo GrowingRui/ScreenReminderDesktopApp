@@ -9,6 +9,14 @@
     "allowlist": {
       "all": true
     },
+    "bundle": {
+      "active": true,
+      "identifier": "com.screen.reminder",
+      "icon": [
+        "icons/icon.png",
+        "icons/icon.ico"
+      ]
+    },
     "systemTray": {
       "iconPath": "icons/icon.png",
       "iconAsTemplate": true
@@ -20,8 +28,9 @@
         "width": 400,
         "height": 500,
         "decorations": false,
-        "transparent": true,
-        "resizable": false
+        "transparent": false,
+        "resizable": false,
+        "visible": true
       }
     ]
   }

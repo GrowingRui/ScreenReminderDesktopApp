@@ -2,9 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 让背景透明，配合 tauri.conf.json */
 html, body, #root {
   height: 100%;
   margin: 0;
-  background: transparent;
+  padding: 0;
+  background: transparent; /* 允许 Tauri 的透明背景生效 */
+  overflow: hidden;
+}
+
+/* 移除 Windows 默认的点击蓝色外框 */
+*:focus {
+  outline: none;
 }

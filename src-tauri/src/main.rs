@@ -13,7 +13,6 @@ fn main() {
     tauri::Builder::default()
         .manage(Arc::new(Mutex::new(TimerState::new())))
         .setup(|app| {
-            // 安全获取路径
             let log_dir = app.path_resolver().app_log_dir()
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
             logger::init_logger(log_dir);
@@ -30,10 +29,9 @@ fn main() {
                 match id.as_str() {
                     "quit" => {
                         log::info!("EVENT: APP_EXIT");
-                        std::process::exit(0);
+                        app.exit(0); // 🟢 优雅退出，优于 std::process::exit
                     }
                     "show" => {
-                        // 优雅处理窗口获取
                         if let Some(window) = app.get_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
