@@ -11,21 +11,19 @@ use timer::TimerState;
 
 fn main() {
     tauri::Builder::default()
-        // 1. 初始化全局状态
         .manage(Arc::new(Mutex::new(TimerState::new())))
-        // 2. 初始化日志（在 setup 中获取正确的系统路径）
         .setup(|app| {
+            // 安全获取路径
             let log_dir = app.path_resolver().app_log_dir()
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
             logger::init_logger(log_dir);
             log::info!("EVENT: APP_START");
             Ok(())
         })
-        // 3. 配置系统托盘
         .system_tray(SystemTray::new().with_menu(
             SystemTrayMenu::new()
-                .add_item(CustomMenuItem::new("show".to_string(), "显示窗口"))
-                .add_item(CustomMenuItem::new("quit".to_string(), "完全退出"))
+                .add_item(CustomMenuItem::new("show".to_string(), "Show Window"))
+                .add_item(CustomMenuItem::new("quit".to_string(), "Quit"))
         ))
         .on_system_tray_event(|app, event| {
             if let tauri::SystemTrayEvent::MenuItemClick { id, .. } = event {
@@ -35,15 +33,16 @@ fn main() {
                         std::process::exit(0);
                     }
                     "show" => {
-                        let window = app.get_window("main").unwrap();
-                        let _ = window.show();
-                        let _ = window.set_focus();
+                        // 优雅处理窗口获取
+                        if let Some(window) = app.get_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
                     }
                     _ => {}
                 }
             }
         })
-        // 4. 注册前后端通信指令
         .invoke_handler(tauri::generate_handler![
             commands::start_timer_cmd,
             commands::stop_timer_cmd

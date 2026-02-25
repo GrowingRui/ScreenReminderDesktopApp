@@ -4,31 +4,26 @@ import { TimerContext } from "../context/TimerContext";
 
 export const useTauriEvents = () => {
   const context = useContext(TimerContext);
-  if (!context) return; // 容错处理
-
-  const { setSeconds, setIsAlert } = context;
 
   useEffect(() => {
-    let unlistenTick: UnlistenFn;
-    let unlistenAlert: UnlistenFn;
+    let unlistenTick: UnlistenFn | null = null;
+    let unlistenAlert: UnlistenFn | null = null;
 
-    // 监听 Rust 发送的秒数更新
     const setupListeners = async () => {
       unlistenTick = await listen<number>("tick", (event) => {
-        setSeconds(event.payload);
+        context?.setSeconds(event.payload);
       });
 
       unlistenAlert = await listen<string>("reminder_alert", () => {
-        setIsAlert(true);
+        context?.setIsAlert(true);
       });
     };
 
     setupListeners();
 
-    // Cleanup: 卸载时取消监听，防止内存泄漏
     return () => {
       if (unlistenTick) unlistenTick();
       if (unlistenAlert) unlistenAlert();
     };
-  }, [setSeconds, setIsAlert]);
+  }, [context]);
 };

@@ -1,6 +1,5 @@
 import React, { createContext, useState, ReactNode } from "react";
 
-// 定义强类型接口
 interface TimerContextType {
   seconds: number;
   setSeconds: React.Dispatch<React.SetStateAction<number>>;
@@ -8,7 +7,8 @@ interface TimerContextType {
   setIsAlert: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export const TimerContext = createContext<TimerContextType | undefined>(undefined);
+// 使用接口且初始为 null，但在 Provider 中保证不为 null
+export const TimerContext = createContext<TimerContextType | null>(null);
 
 export const TimerProvider = ({ children }: { children: ReactNode }) => {
   const [seconds, setSeconds] = useState(1800);
