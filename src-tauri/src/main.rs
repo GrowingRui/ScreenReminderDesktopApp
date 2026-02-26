@@ -43,7 +43,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::start_timer_cmd,
-            commands::stop_timer_cmd
+            commands::stop_timer_cmd,
+            commands::get_stats_cmd
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,7 +7,10 @@
   },
   "tauri": {
     "allowlist": {
-      "all": true
+      "all": true,
+      "notification": {
+        "all": true
+      }
     },
     "bundle": {
       "active": true,
@@ -25,12 +28,13 @@
       {
         "label": "main",
         "title": "Screen Reminder",
-        "width": 400,
-        "height": 500,
+        "width": 380,
+        "height": 620,
         "decorations": false,
         "transparent": false,
         "resizable": false,
-        "visible": true
+        "visible": true,
+        "alwaysOnTop": true
       }
     ]
   }
