@@ -4,8 +4,7 @@ use serde::{Serialize, Deserialize};
 pub struct ReminderStats {
     pub water: u32,
     pub eye: u32,
-    pub move_body: u32,
-    pub breath: u32,
+    pub long_sitting: u32,
 }
 
 pub struct TimerState {
@@ -25,8 +24,7 @@ impl TimerState {
             stats: ReminderStats {
                 water: 0,
                 eye: 0,
-                move_body: 0,
-                breath: 0,
+                long_sitting: 0,
             },
         }
     }

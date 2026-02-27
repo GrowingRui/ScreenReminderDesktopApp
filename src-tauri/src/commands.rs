@@ -14,6 +14,8 @@ pub async fn start_timer_cmd(
     app: AppHandle
 ) -> Result<(), String> {
     let mut s = state.lock().await;
+
+    // 设置秒数（如果是恢复，前端会传当前剩余秒数；如果是新开始，传设定的总秒数）
     s.seconds_remaining = seconds;
 
     if s.running { return Ok(()); }
@@ -41,15 +43,13 @@ pub async fn start_timer_cmd(
                 match timer_type.as_str() {
                     "water" => s.stats.water += 1,
                     "eye" => s.stats.eye += 1,
-                    "move" => s.stats.move_body += 1,
-                    "breath" => s.stats.breath += 1,
+                    "long_sitting" => s.stats.long_sitting += 1,
                     _ => {}
                 }
 
-                let log_entry = format!("{} | 完成提醒: {}\n", Local::now().format("%Y-%m-%d %H:%M:%S"), timer_type);
-                if let Ok(mut file) = OpenOptions::new().append(true).create(true).open("reminder_history.txt") {
-                    let _ = file.write_all(log_entry.as_bytes());
-                }
+                let log_entry = format!("{} | Completed: {}\n", Local::now().format("%Y-%m-%d %H:%M:%S"), timer_type);
+                let _ = OpenOptions::new().append(true).create(true).open("reminder_history.txt")
+                    .map(|mut f| f.write_all(log_entry.as_bytes()));
 
                 let _ = app_clone.emit_all("timer-finished", timer_type);
                 let _ = app_clone.emit_all("stats-update", s.stats.clone());

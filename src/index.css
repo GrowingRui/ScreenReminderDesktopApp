@@ -3,24 +3,21 @@
 @tailwind utilities;
 
 html, body, #root {
-  background-color: #ffffff;
+  background-color: transparent;
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
   overflow: hidden;
-  /* 防止选中文字干扰拖拽 */
   user-select: none;
 }
 
-/* 隐藏输入框的微调按钮（上下箭头） */
+*:focus {
+  outline: none;
+}
+
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
-}
-
-/* 移除 Windows 默认的点击蓝色外框 */
-*:focus {
-  outline: none;
 }
