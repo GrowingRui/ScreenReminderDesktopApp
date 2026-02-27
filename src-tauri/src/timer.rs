@@ -1,30 +1,42 @@
 use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReminderConfig {
+    pub interval_minutes: u32,
+    pub enabled: bool,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReminderStats {
-    pub water: u32,
-    pub eye: u32,
-    pub long_sitting: u32,
+    pub counts: HashMap<String, u32>,
 }
 
 pub struct TimerState {
     pub seconds_remaining: u32,
     pub running: bool,
+    pub active_type: Option<String>,
+    pub loop_enabled: bool,
+    pub configs: HashMap<String, ReminderConfig>,
     pub stats: ReminderStats,
-    // 如果你还需要统计总会话数，可以保留这个：
-    pub session_count: u32,
 }
 
 impl TimerState {
     pub fn new() -> Self {
+        let mut configs = HashMap::new();
+
+        configs.insert("water".into(), ReminderConfig { interval_minutes: 30, enabled: true });
+        configs.insert("eye".into(), ReminderConfig { interval_minutes: 60, enabled: true });
+        configs.insert("long_sitting".into(), ReminderConfig { interval_minutes: 45, enabled: true });
+
         Self {
             seconds_remaining: 0,
             running: false,
-            session_count: 0,
+            active_type: None,
+            loop_enabled: true,
+            configs,
             stats: ReminderStats {
-                water: 0,
-                eye: 0,
-                long_sitting: 0,
+                counts: HashMap::new(),
             },
         }
     }

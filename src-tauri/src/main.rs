@@ -44,6 +44,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::start_timer_cmd,
             commands::stop_timer_cmd,
+            commands::reset_timer_cmd,
+            commands::toggle_loop_cmd,
+            commands::add_reminder_cmd,
             commands::get_stats_cmd
         ])
         .run(tauri::generate_context!())

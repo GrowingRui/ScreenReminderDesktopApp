@@ -3,41 +3,66 @@ import { TimerContext, TimerProvider } from "./context/TimerContext";
 import { useTauriEvents } from "./hooks/useTauriEvents";
 import { invoke } from "@tauri-apps/api/tauri";
 import { appWindow } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
-
-type ReminderType = "water" | "eye" | "long_sitting";
 
 function InnerApp() {
   useTauriEvents();
   const context = useContext(TimerContext);
-  const [activeType, setActiveType] = useState<ReminderType>("water");
-  const [customMin, setCustomMin] = useState("20");
-  const [stats, setStats] = useState({ water: 0, eye: 0, long_sitting: 0 });
+
+  const [activeType, setActiveType] = useState("water");
+  const [customMin, setCustomMin] = useState("30");
+  const [loopEnabled, setLoopEnabled] = useState(true);
+  const [stats, setStats] = useState<Record<string, number>>({});
+  const [reminders, setReminders] = useState<string[]>([
+    "water",
+    "eye",
+    "long_sitting"
+  ]);
+
+  const [newName, setNewName] = useState("");
+  const [newMinutes, setNewMinutes] = useState("");
 
   if (!context) return null;
   const { seconds, setSeconds } = context;
 
   useEffect(() => {
-    invoke("get_stats_cmd").then((res: any) => setStats(res));
-    const unlistenStats = listen("stats-update", (event: any) => setStats(event.payload));
-    const unlistenFinish = listen("timer-finished", (type: any) => {
-      new Notification("SCREEN REMINDER", { body: `Time to ${type.payload}!` });
+    invoke("get_stats_cmd").then((res: any) => {
+      if (res?.counts) setStats(res.counts);
     });
-    return () => {
-      unlistenStats.then(f => f());
-      unlistenFinish.then(f => f());
-    };
   }, []);
 
   const handleStart = () => {
-    // 关键逻辑：如果 seconds > 0 说明是恢复，否则读取输入框
-    const startSec = seconds > 0 ? seconds : parseInt(customMin) * 60;
-    invoke("start_timer_cmd", { seconds: startSec, timerType: activeType });
+    invoke("start_timer_cmd", {
+      timerType: activeType,
+      customMinutes: parseInt(customMin)
+    });
+  };
+
+  const handlePause = () => {
+    invoke("stop_timer_cmd");
   };
 
   const handleReset = () => {
-    invoke("stop_timer_cmd");
+    invoke("reset_timer_cmd");
     setSeconds(0);
+  };
+
+  const toggleLoop = () => {
+    const newVal = !loopEnabled;
+    setLoopEnabled(newVal);
+    invoke("toggle_loop_cmd", { enabled: newVal });
+  };
+
+  const handleAddReminder = () => {
+    if (!newName || !newMinutes) return;
+
+    invoke("add_reminder_cmd", {
+      name: newName,
+      minutes: parseInt(newMinutes)
+    });
+
+    setReminders([...reminders, newName]);
+    setNewName("");
+    setNewMinutes("");
   };
 
   return (
@@ -45,74 +70,137 @@ function InnerApp() {
       data-tauri-drag-region
       className="h-screen w-screen bg-[#121212] text-white flex flex-col rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl select-none font-sans"
     >
-      {/* 顶部标题栏 - 名字修正 */}
-      <div data-tauri-drag-region className="h-14 flex items-center justify-between px-8 bg-black/20">
-        <span className="text-[10px] font-black tracking-[0.3em] text-white/40 uppercase pointer-events-none">SCREEN REMINDER</span>
+      {/* 顶部栏 */}
+      <div
+        data-tauri-drag-region
+        className="h-14 flex items-center justify-between px-6 bg-black/30"
+      >
+        <span className="text-xs tracking-widest text-white/40 uppercase">
+          SCREEN REMINDER
+        </span>
         <div className="flex space-x-3 pointer-events-auto">
-          <button onClick={() => appWindow.minimize()} className="text-white/40 hover:text-white transition-colors">_</button>
-          <button onClick={() => appWindow.hide()} className="text-red-500/60 hover:text-red-500 transition-colors">✕</button>
+          <button
+            onClick={() => appWindow.minimize()}
+            className="text-white/40 hover:text-white"
+          >
+            _
+          </button>
+          <button
+            onClick={() => appWindow.hide()}
+            className="text-red-500/60 hover:text-red-500"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
       <div className="flex-1 p-6 flex flex-col space-y-6 pointer-events-none">
-        {/* 类型卡片 - 改为深色高级感 */}
-        <div className="grid grid-cols-1 gap-3 pointer-events-auto">
-          {[
-            { id: "water", label: "定时喝水", icon: "💧", count: stats.water },
-            { id: "eye", label: "远眺护眼", icon: "👁️", count: stats.eye },
-            { id: "long_sitting", label: "久坐活动", icon: "🏃", count: stats.long_sitting },
-          ].map((item) => (
+        {/* 提醒类型选择 */}
+        <div className="pointer-events-auto space-y-2">
+          {reminders.map((type) => (
             <div
-              key={item.id}
-              onClick={() => { handleReset(); setActiveType(item.id as ReminderType); }}
-              className={`p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all border ${
-                activeType === item.id ? 'bg-white/10 border-white/20' : 'bg-transparent border-transparent opacity-40 hover:opacity-100'
+              key={type}
+              onClick={() => setActiveType(type)}
+              className={`p-3 rounded-xl cursor-pointer border transition ${
+                activeType === type
+                  ? "bg-white/10 border-white/20"
+                  : "bg-transparent border-transparent opacity-40 hover:opacity-100"
               }`}
             >
-              <div className="flex items-center space-x-4">
-                <span className="text-2xl">{item.icon}</span>
-                <span className="text-sm font-bold">{item.label}</span>
+              <div className="flex justify-between">
+                <span className="font-bold text-sm">{type}</span>
+                <span className="text-xs text-white/40">
+                  Done: {stats[type] || 0}
+                </span>
               </div>
-              <span className="text-[10px] font-black bg-white/10 px-2 py-1 rounded-lg uppercase">Done: {item.count}</span>
             </div>
           ))}
         </div>
 
-        {/* 计时器核心面板 - 极简主义设计 */}
-        <div className="flex-1 bg-gradient-to-br from-[#1E1E1E] to-[#121212] rounded-[2rem] border border-white/5 flex flex-col items-center justify-center p-8 pointer-events-auto relative">
-          <div className="text-[5.5rem] font-mono font-thin tracking-tighter tabular-nums leading-none mb-6">
-            {Math.floor(seconds / 60).toString().padStart(2, '0')}:
-            {(seconds % 60).toString().padStart(2, '0')}
+        {/* 计时器 */}
+        <div className="flex-1 bg-gradient-to-br from-[#1E1E1E] to-[#121212] rounded-[2rem] border border-white/5 flex flex-col items-center justify-center p-6 pointer-events-auto">
+          <div className="text-[4.5rem] font-mono font-thin tracking-tighter mb-6">
+            {Math.floor(seconds / 60)
+              .toString()
+              .padStart(2, "0")}
+            :
+            {(seconds % 60).toString().padStart(2, "0")}
           </div>
 
-          <div className="flex items-center space-x-4 mb-8 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Interval</span>
+          {/* 自定义时间 */}
+          <div className="flex items-center space-x-2 mb-6">
+            <span className="text-xs text-white/40 uppercase">
+              Interval
+            </span>
             <input
               type="number"
               value={customMin}
               onChange={(e) => setCustomMin(e.target.value)}
-              className="w-12 text-center bg-transparent border-none font-bold text-white focus:ring-0 text-lg"
-              disabled={seconds > 0}
+              className="w-16 text-center bg-black/30 rounded-lg py-1"
             />
-            <span className="text-[10px] font-bold text-white/30 uppercase">Min</span>
+            <span className="text-xs text-white/40 uppercase">
+              Min
+            </span>
           </div>
 
+          {/* 控制按钮 */}
           <div className="flex space-x-3 w-full">
             <button
               onClick={handleStart}
-              className="flex-[2] bg-white text-black py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/90 active:scale-95 transition-all shadow-xl shadow-white/5"
+              className="flex-1 bg-white text-black py-3 rounded-xl font-bold"
             >
-              {seconds > 0 ? "Resume" : "Start Tracking"}
+              Start / Resume
             </button>
             <button
-              onClick={() => invoke("stop_timer_cmd")}
-              className="flex-1 bg-white/5 hover:bg-white/10 text-white py-4 rounded-2xl font-bold text-xs uppercase transition-all"
+              onClick={handlePause}
+              className="flex-1 bg-white/10 py-3 rounded-xl"
             >
               Pause
             </button>
           </div>
 
-          <button onClick={handleReset} className="mt-6 text-[9px] font-bold text-white/20 hover:text-white/60 transition-colors uppercase tracking-[0.3em]">Reset Session</button>
+          <button
+            onClick={handleReset}
+            className="mt-4 text-xs text-white/40 hover:text-white"
+          >
+            Reset
+          </button>
+
+          {/* 循环开关 */}
+          <button
+            onClick={toggleLoop}
+            className="mt-4 text-xs text-white/60 hover:text-white"
+          >
+            Loop: {loopEnabled ? "ON" : "OFF"}
+          </button>
+        </div>
+
+        {/* 添加自定义提醒 */}
+        <div className="pointer-events-auto bg-black/30 p-4 rounded-xl">
+          <div className="text-xs mb-2 text-white/40 uppercase">
+            Add Reminder
+          </div>
+          <div className="flex space-x-2">
+            <input
+              placeholder="Name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="flex-1 bg-black/40 px-2 py-1 rounded"
+            />
+            <input
+              placeholder="Minutes"
+              type="number"
+              value={newMinutes}
+              onChange={(e) => setNewMinutes(e.target.value)}
+              className="w-20 bg-black/40 px-2 py-1 rounded"
+            />
+            <button
+              onClick={handleAddReminder}
+              className="bg-white text-black px-3 rounded"
+            >
+              Add
+            </button>
+          </div>
         </div>
       </div>
     </div>
